@@ -6,9 +6,12 @@ print("[SYSTEM] Starting DT → SCADA → DB test")
 df = run_simulation(fault_mode="leak")
 
 for _, row in df.iterrows():
-    alarms = ingest_data(row.to_dict())
+    alarms,score, is_anomaly = ingest_data(row.to_dict())
 
     if alarms:
         print("[SCADA ALARM]", alarms)
+
+    if is_anomaly:
+        print(f"[AI ANOMALY] Score: {score:.4f} exceeds threshold")
 
 print("[SYSTEM] Test completed")

@@ -1,5 +1,5 @@
 # scada/historian.py
-
+import json
 from database.db_connector import get_db_connection
 
 def write_sensor_data(data):
@@ -45,6 +45,20 @@ def write_event(event):
         event["parameter"],
         event["value"]
     ))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def write_ai_event(timestamp, score, threshold, status, explanation):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO ai_events
+        (timestamp, anomaly_score, threshold, status, explanation)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (timestamp, float(score), float(threshold), status, json.dumps(explanation)))
 
     conn.commit()
     cur.close()
