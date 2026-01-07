@@ -6,3 +6,4 @@ flask
 psycopg2-binary
 sqlalchemy
 matplotlib
+psycopg2
