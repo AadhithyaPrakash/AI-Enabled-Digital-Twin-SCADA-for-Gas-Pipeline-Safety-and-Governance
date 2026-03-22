@@ -1,0 +1,96 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# config/settings.yaml
+# Reference configuration for the AI-Enabled Digital Twin SCADA System.
+# All values here are defaults. Override any value via the corresponding
+# environment variable defined in .env (see .env.example).
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Database ──────────────────────────────────────────────────────────────────
+database:
+  name:            postgres        # env: DB_NAME
+  user:            postgres        # env: DB_USER
+  password:        ""              # env: DB_PASSWORD  ← never commit real value
+  host:            localhost       # env: DB_HOST
+  port:            5432            # env: DB_PORT
+  connect_timeout: 10
+  app_name:        dt-scada
+
+# ── Digital Twin simulator ────────────────────────────────────────────────────
+digital_twin:
+  pipeline_length_m:             10000
+  pipeline_diameter_m:           0.8
+  gas_density_kg_m3:             0.8
+  num_bends:                     6
+  bend_equivalent_length_factor: 8
+  friction_coefficient:          0.002
+
+  # Normal operating conditions
+  normal_pressure_bar:   60.0
+  normal_flow_m3s:       25.0
+  normal_temperature_c:  30.0
+  normal_vibration:      0.4
+
+  # Vibration physics: coeff × velocity (m/s) added to base vibration
+  # velocity ≈ 49.7 m/s at normal flow → 0.002 × 49.7 ≈ 0.10 added
+  # total normal vibration ≈ 0.50 ± 0.05
+  vibration_velocity_coefficient: 0.002
+
+  simulation:
+    total_steps:       300
+    time_step_seconds: 0.5   # 0.5 s per step → 300 steps ≈ 2.5 min
+
+# ── SCADA alarm thresholds ────────────────────────────────────────────────────
+scada:
+  # Tier 1: hard limits (fire immediately on breach)
+  pressure_min_bar:  50.0
+  pressure_max_bar:  70.0
+  flow_min_m3s:      20.0
+  flow_max_m3s:      30.0
+
+  # Tier 2: warnings (fire when approaching limit or on sudden change)
+  near_threshold_frac:  0.10   # within 10 % of limit → WARNING
+  roc_pressure_warn:    2.0    # bar/step rate-of-change spike
+  roc_flow_warn:        2.0    # m³/s/step rate-of-change spike
+  vibration_warn:       0.90   # absolute level → WARNING
+  vibration_high:       1.60   # absolute level → HIGH
+  temperature_warn:     35.0   # °C
+
+# ── AI Engine ─────────────────────────────────────────────────────────────────
+ai_engine:
+  features:
+    - pressure_bar
+    - flow_m3s
+    - temperature_c
+    - vibration
+
+  # Training defaults (overridable via AI Lab UI or POST /api/ai/train)
+  default_training_steps:  500    # normal-operation steps for dataset
+  default_epochs:          50     # max epochs (EarlyStopping may stop earlier)
+  batch_size:              32
+  validation_split:        0.10
+
+  # Threshold calibration: min(mean + sigma_multiplier × std, p95)
+  # This replaced the old p99-from-DB approach that produced thresholds ~0.12
+  # (too high — scores never crossed it)
+  threshold_sigma_multiplier: 2.5
+
+  # Runtime ceiling: cap DB-stored threshold at this value
+  # Prevents an over-permissive saved threshold from silencing all AI events
+  threshold_ceiling: 0.10
+
+  # Fallback when no model has been trained yet
+  threshold_default: 0.07
+
+  # Score history window (steps kept in memory for the AI Lab chart)
+  score_history_maxlen: 500
+
+  # Model storage
+  model_dir:     models/
+  registry_file: models/registry.json
+
+# ── HMI / Flask ───────────────────────────────────────────────────────────────
+hmi:
+  host:         0.0.0.0
+  port:         5000
+  debug:        true
+  use_reloader: false   # must be false — background sim thread conflicts with reloader

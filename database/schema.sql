@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS ai_events (
     timestamp TIMESTAMP,
     anomaly_score FLOAT,
     threshold FLOAT,
-    status VARCHAR(20)
+    status VARCHAR(20),
+    explanation JSONB
 );
 CREATE TABLE IF NOT EXISTS ai_model_metadata (
     id SERIAL PRIMARY KEY,

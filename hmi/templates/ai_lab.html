@@ -1,0 +1,224 @@
+{% extends "layout.html" %}
+{% block title %}AI Lab{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block topbar_actions %}
+  <div class="sim-control-bar">
+    <span class="ctrl-info" id="ai-sim-state-info">—</span>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="ailab-layout">
+
+  <!-- ══ LEFT COLUMN: Model + Training ══ -->
+  <aside class="ailab-sidebar">
+
+    <!-- Model Status -->
+    <div class="ailab-card">
+      <div class="ailab-card-title">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2"/>
+          <circle cx="6" cy="6" r="1.5" fill="currentColor" opacity=".8"/>
+        </svg>
+        AI Model Status
+      </div>
+
+      <div class="model-status-grid" id="model-status-grid">
+        <div class="ms-row"><span class="ms-label">Version</span><span class="ms-val" id="ms-version">—</span></div>
+        <div class="ms-row"><span class="ms-label">Threshold</span><span class="ms-val ms-highlight" id="ms-threshold">—</span></div>
+        <div class="ms-row"><span class="ms-label">Threshold method</span><span class="ms-val" id="ms-method" style="font-size:9px">—</span></div>
+        <div class="ms-row"><span class="ms-label">Trained on</span><span class="ms-val" id="ms-dataset">—</span></div>
+        <div class="ms-row"><span class="ms-label">Train loss</span><span class="ms-val" id="ms-loss">—</span></div>
+        <div class="ms-row"><span class="ms-label">Val loss</span><span class="ms-val" id="ms-val-loss">—</span></div>
+        <div class="ms-row"><span class="ms-label">Epochs</span><span class="ms-val" id="ms-epochs">—</span></div>
+        <div class="ms-row"><span class="ms-label">Trained at</span><span class="ms-val" id="ms-trained-at" style="font-size:9px">—</span></div>
+      </div>
+
+      <div class="no-model-notice" id="no-model-notice" style="display:none">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.2" opacity=".4"/>
+          <line x1="9" y1="5" x2="9" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="9" cy="12.5" r="1" fill="currentColor" opacity=".7"/>
+        </svg>
+        No trained model found.<br/>Train using the panel below.
+      </div>
+    </div>
+
+    <!-- Train Panel -->
+    <div class="ailab-card">
+      <div class="ailab-card-title">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <polyline points="1,9 4,5 7,7 11,2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Train AI Model
+      </div>
+
+      <div class="train-explainer">
+        Generates a clean normal-operation dataset, trains the autoencoder,
+        and calibrates the anomaly threshold. Run this before fault scenarios.
+      </div>
+
+      <div class="field-row" style="margin-bottom:8px">
+        <span class="field-label">Normal steps</span>
+        <input class="field-input" id="train-steps" type="number" value="500" min="100" max="2000"/>
+        <span class="field-unit">pts</span>
+      </div>
+      <div class="field-row" style="margin-bottom:12px">
+        <span class="field-label">Max epochs</span>
+        <input class="field-input" id="train-epochs" type="number" value="50" min="10" max="200"/>
+        <span class="field-unit">—</span>
+      </div>
+
+      <button class="btn-full btn-full-primary" id="train-btn" onclick="startTraining()">
+        Train AI Model
+      </button>
+
+      <!-- Training progress -->
+      <div class="train-progress-area" id="train-progress-area" style="display:none">
+        <div class="train-progress-bar-bg">
+          <div class="train-progress-bar" id="train-progress-bar"></div>
+        </div>
+        <div class="train-status-txt" id="train-status-txt">Preparing dataset…</div>
+      </div>
+      <div class="train-error-txt" id="train-error-txt" style="display:none"></div>
+      <div class="train-success-txt" id="train-success-txt" style="display:none"></div>
+    </div>
+
+    <!-- Quick Guide -->
+    <div class="ailab-card ailab-guide">
+      <div class="ailab-card-title">How to run an experiment</div>
+      <ol class="guide-steps">
+        <li><span class="guide-num">1</span> Go to <strong>Pipeline Engineer</strong><br/>Select <em>Normal Pipeline</em> and run it</li>
+        <li><span class="guide-num">2</span> Come back here and click <strong>Train AI Model</strong></li>
+        <li><span class="guide-num">3</span> Go to Engineer, select a <strong>fault scenario</strong> and run it</li>
+        <li><span class="guide-num">4</span> Return here to see the <strong>experiment results</strong></li>
+      </ol>
+    </div>
+
+  </aside>
+
+  <!-- ══ MIDDLE: Experiment Results ══ -->
+  <section class="ailab-main">
+
+    <!-- Experiment Summary -->
+    <div class="ailab-card experiment-card">
+      <div class="ailab-card-title">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <rect x="1" y="8" width="2" height="3" fill="currentColor" opacity=".5"/>
+          <rect x="5" y="5" width="2" height="6" fill="currentColor" opacity=".7"/>
+          <rect x="9" y="2" width="2" height="9" fill="currentColor" opacity=".9"/>
+        </svg>
+        Experiment Results
+        <span class="experiment-scenario-badge" id="exp-scenario-badge"></span>
+      </div>
+
+      <div class="experiment-grid" id="experiment-grid">
+
+        <div class="exp-col scada-col">
+          <div class="exp-col-header">
+            <span class="exp-badge badge-scada-medium">SCADA Rules</span>
+          </div>
+          <div class="exp-metric">
+            <div class="exp-metric-val" id="exp-scada-step">—</div>
+            <div class="exp-metric-label">First alarm step</div>
+          </div>
+          <div class="exp-metric">
+            <div class="exp-metric-val" id="exp-scada-time">—</div>
+            <div class="exp-metric-label">First alarm time</div>
+          </div>
+          <div class="exp-metric">
+            <div class="exp-metric-val" id="exp-scada-count">—</div>
+            <div class="exp-metric-label">Total alarms</div>
+          </div>
+        </div>
+
+        <div class="exp-vs">VS</div>
+
+        <div class="exp-col ai-col">
+          <div class="exp-col-header">
+            <span class="exp-badge badge-ai">AI Detector</span>
+          </div>
+          <div class="exp-metric">
+            <div class="exp-metric-val" id="exp-ai-step">—</div>
+            <div class="exp-metric-label">First anomaly step</div>
+          </div>
+          <div class="exp-metric">
+            <div class="exp-metric-val" id="exp-ai-time">—</div>
+            <div class="exp-metric-label">First anomaly time</div>
+          </div>
+          <div class="exp-metric">
+            <div class="exp-metric-val" id="exp-ai-count">—</div>
+            <div class="exp-metric-label">Total anomalies</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Verdict -->
+      <div class="experiment-verdict" id="experiment-verdict">
+        <div class="verdict-icon" id="verdict-icon">⚡</div>
+        <div class="verdict-text" id="verdict-text">No fault experiment data yet.<br/>Run a fault scenario to see results.</div>
+      </div>
+
+      <!-- Extra stats row -->
+      <div class="exp-stats-row" id="exp-stats-row">
+        <div class="exp-stat-chip"><span class="esc-label">Steps run</span><span class="esc-val" id="exp-steps-run">—</span></div>
+        <div class="exp-stat-chip"><span class="esc-label">Score mean</span><span class="esc-val" id="exp-score-mean">—</span></div>
+        <div class="exp-stat-chip"><span class="esc-label">Score peak</span><span class="esc-val" id="exp-score-max">—</span></div>
+        <div class="exp-stat-chip"><span class="esc-label">Threshold</span><span class="esc-val" id="exp-threshold">—</span></div>
+      </div>
+    </div>
+
+    <!-- Score Timeline -->
+    <div class="ailab-card score-card">
+      <div class="ailab-card-header-row">
+        <div class="ailab-card-title">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <polyline points="1,8 3,5 5,7 8,3 11,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          AI Anomaly Score · Full Run History
+        </div>
+        <div class="score-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#bc8cff"></span>score</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#d29922;border-radius:0;height:1px;width:12px;display:inline-block"></span>threshold</span>
+          <span class="score-live" id="score-live-val">—</span>
+        </div>
+      </div>
+      <div class="score-chart-wrap">
+        <canvas id="score-chart"></canvas>
+      </div>
+      <div class="score-chart-empty" id="score-chart-empty">
+        Run a simulation to see the anomaly score timeline
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ══ RIGHT COLUMN: Model Registry ══ -->
+  <aside class="ailab-registry">
+    <div class="ailab-card" style="height:100%;overflow:hidden;display:flex;flex-direction:column">
+      <div class="ailab-card-title">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <rect x="1" y="1" width="10" height="2" rx="1" fill="currentColor" opacity=".4"/>
+          <rect x="1" y="5" width="10" height="2" rx="1" fill="currentColor" opacity=".6"/>
+          <rect x="1" y="9" width="10" height="2" rx="1" fill="currentColor" opacity=".8"/>
+        </svg>
+        Model Registry
+        <span class="registry-count-badge" id="registry-count-badge">0</span>
+      </div>
+      <div class="registry-list" id="registry-list">
+        <div class="registry-empty">No trained models yet</div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ai_lab.js') }}"></script>
+{% endblock %}

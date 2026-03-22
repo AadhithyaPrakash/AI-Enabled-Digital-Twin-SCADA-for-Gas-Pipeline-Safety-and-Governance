@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}DT·SCADA{% endblock %} — Pipeline System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-accent">DT·SCADA</span>
+      <span class="brand-sub">Gas Pipeline Safety System</span>
+    </div>
+
+    <nav class="page-tabs">
+      <a href="/engineer"  class="tab {% if request.endpoint == 'engineer' %}active{% endif %}">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <rect x="1" y="1" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/>
+          <rect x="7" y="1" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/>
+          <rect x="1" y="7" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/>
+          <rect x="7" y="7" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        Pipeline Engineer
+      </a>
+      <a href="/ai-lab" class="tab {% if request.endpoint == 'ai_lab' %}active{% endif %}">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2"/>
+          <circle cx="6" cy="6" r="1.5" fill="currentColor" opacity=".7"/>
+          <line x1="6" y1="1" x2="6" y2="2.5" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="6" y1="9.5" x2="6" y2="11" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="1" y1="6" x2="2.5" y2="6" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="9.5" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        AI Lab
+      </a>
+      <a href="/dashboard" class="tab {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <polyline points="1,9 4,5 7,7 11,2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Operations Dashboard
+      </a>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="db-indicator" id="db-indicator" title="Database status">
+        <span class="db-dot"></span>
+        <span class="db-label">DB</span>
+      </div>
+      <button class="btn-reset" id="reset-btn" onclick="handleReset()" title="Clear all simulation data and AI state">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+          <path d="M9.5 2A5 5 0 1 0 10 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <polygon points="7.5,0 10.5,3 7.5,3" fill="currentColor"/>
+        </svg>
+        Reset Data
+      </button>
+      {% block topbar_actions %}{% endblock %}
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    async function handleReset() {
+      const btn = document.getElementById('reset-btn');
+      if (!confirm('Clear ALL simulation data?\n\nThis will truncate sensor_data, events, ai_events, and ai_model_metadata.\nThe AI model files on disk are kept — only DB records are removed.')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Clearing…';
+
+      try {
+        const r = await fetch('/api/data/reset', { method: 'POST' });
+        const d = await r.json();
+        if (d.ok) {
+          btn.textContent = '✓ Cleared';
+          btn.style.color = 'var(--green)';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M9.5 2A5 5 0 1 0 10 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><polygon points="7.5,0 10.5,3 7.5,3" fill="currentColor"/></svg> Reset Data`;
+            btn.style.color = '';
+          }, 2000);
+        } else {
+          alert('Reset failed: ' + (d.message || 'unknown error'));
+          btn.disabled = false;
+          btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M9.5 2A5 5 0 1 0 10 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><polygon points="7.5,0 10.5,3 7.5,3" fill="currentColor"/></svg> Reset Data`;
+        }
+      } catch (e) {
+        alert('Reset request failed: ' + e);
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M9.5 2A5 5 0 1 0 10 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><polygon points="7.5,0 10.5,3 7.5,3" fill="currentColor"/></svg> Reset Data`;
+      }
+    }
+
+    async function checkDb() {
+      try {
+        const r = await fetch('/api/system/status');
+        const d = await r.json();
+        const el = document.getElementById('db-indicator');
+        if (el) {
+          el.classList.toggle('connected', d.db_connected);
+          el.title = d.db_connected ? 'Database connected' : 'Database disconnected';
+        }
+      } catch(e) {}
+    }
+    checkDb();
+    setInterval(checkDb, 5000);
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

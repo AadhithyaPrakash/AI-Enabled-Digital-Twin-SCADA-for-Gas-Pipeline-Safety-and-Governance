@@ -1,0 +1,136 @@
+{% extends "layout.html" %}
+{% block title %}Operations Dashboard{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block topbar_actions %}
+  <div class="sim-control-bar">
+    <div class="sim-state-pill">
+      <span class="sim-state-dot" id="sim-state-dot"></span>
+      <span id="sim-state-label">Idle</span>
+    </div>
+    <span class="ctrl-info" id="ctrl-info"></span>
+    <button class="btn-danger btn-sm" id="stop-btn" onclick="stopSimulation()" style="display:none">&#9632; Stop</button>
+  </div>
+  <div class="experiment-mini" id="experiment-mini" style="display:none"></div>
+  <a href="/ai-lab" class="btn-ghost btn-sm" style="font-size:10px">AI Lab →</a>
+  <div class="update-indicator" id="update-indicator">–</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- KPI Row -->
+<div class="kpi-row">
+  <div class="kpi-card" id="kpi-pressure">
+    <div class="kpi-label">PRESSURE</div>
+    <div class="kpi-value-row">
+      <span class="kpi-value" id="kpi-pressure-val">—</span>
+      <span class="kpi-unit">bar</span>
+    </div>
+    <div class="kpi-range">Normal 50–70 bar</div>
+    <div class="kpi-badge" id="kpi-pressure-badge">—</div>
+  </div>
+  <div class="kpi-card" id="kpi-flow">
+    <div class="kpi-label">FLOW</div>
+    <div class="kpi-value-row">
+      <span class="kpi-value" id="kpi-flow-val">—</span>
+      <span class="kpi-unit">m³/s</span>
+    </div>
+    <div class="kpi-range">Normal 20–30 m³/s</div>
+    <div class="kpi-badge" id="kpi-flow-badge">—</div>
+  </div>
+  <div class="kpi-card" id="kpi-temp">
+    <div class="kpi-label">TEMPERATURE</div>
+    <div class="kpi-value-row">
+      <span class="kpi-value" id="kpi-temp-val">—</span>
+      <span class="kpi-unit">°C</span>
+    </div>
+    <div class="kpi-range">Normal ~30 °C</div>
+    <div class="kpi-badge" id="kpi-temp-badge">—</div>
+  </div>
+  <div class="kpi-card" id="kpi-vibration">
+    <div class="kpi-label">VIBRATION</div>
+    <div class="kpi-value-row">
+      <span class="kpi-value" id="kpi-vibration-val">—</span>
+      <span class="kpi-unit"></span>
+    </div>
+    <div class="kpi-range">AI score: <span id="ai-score-inline">—</span> &middot; <a href="/ai-lab" style="color:var(--purple);text-decoration:none;font-size:9px">AI Lab →</a></div>
+    <div class="kpi-badge" id="kpi-vibration-badge">—</div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="dash-main">
+
+  <!-- Charts panel -->
+  <div class="charts-panel">
+    <div class="chart-card" style="flex:1.5">
+      <div class="chart-card-header">
+        <div class="chart-card-title">Pressure &amp; Flow · live telemetry</div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#f85149"></span>Pressure (bar)</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#58a6ff"></span>Flow (m³/s)</span>
+          <span class="fault-line-hint" id="fault-line-hint" style="display:none">
+            <span class="legend-dot" style="background:rgba(210,153,34,0.6)"></span>fault start
+          </span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="main-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="mini-charts-row">
+      <div class="chart-card mini-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">Temperature</div>
+          <div class="mini-live-val green-val" id="mini-temp-val">—</div>
+        </div>
+        <div class="chart-wrap" style="height:70px">
+          <canvas id="temp-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card mini-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">Vibration</div>
+          <div class="mini-live-val purple-val" id="mini-vib-val">—</div>
+        </div>
+        <div class="chart-wrap" style="height:70px">
+          <canvas id="vib-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card mini-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">AI anomaly score</div>
+          <div class="mini-live-val ai-val" id="mini-ai-val">—</div>
+        </div>
+        <div class="chart-wrap" style="height:70px">
+          <canvas id="ai-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event feed -->
+  <aside class="events-panel">
+    <div class="events-header">
+      <span>Event feed</span>
+      <div class="event-tabs">
+        <button class="etab active" data-filter="all"   onclick="setEventFilter('all')">All</button>
+        <button class="etab"        data-filter="scada" onclick="setEventFilter('scada')">SCADA</button>
+        <button class="etab"        data-filter="ai"    onclick="setEventFilter('ai')">AI</button>
+      </div>
+    </div>
+    <div class="events-list" id="events-list">
+      <div class="events-empty">No events yet. Start a simulation.</div>
+    </div>
+  </aside>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

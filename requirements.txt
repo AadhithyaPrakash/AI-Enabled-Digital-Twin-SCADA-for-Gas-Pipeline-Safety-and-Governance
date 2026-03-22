@@ -4,6 +4,6 @@ scikit-learn
 tensorflow
 flask
 psycopg2-binary
-sqlalchemy
-matplotlib
-psycopg2
+python-dotenv
+pyyaml
+joblib
